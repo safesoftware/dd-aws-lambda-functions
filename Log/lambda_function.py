@@ -240,6 +240,20 @@ def s3_handler(event):
                 event, {"aws": {"s3": {"bucket": bucket, "key": key}}}
             )
             yield structured_line
+    elif metadata[DD_SOURCE] == "auth0":
+        auth0_data = json.loads(data)
+        if isinstance(auth0_data, list):
+            for event in auth0_data:
+                # Create structured object and send it
+                structured_line = merge_dicts(
+                    event, {"aws": {"s3": {"bucket": bucket, "key": key}}}
+                )
+                yield structured_line
+        else:
+            structured_line = merge_dicts(
+                auth0_data, {"aws": {"s3": {"bucket": bucket, "key": key}}}
+            )
+            yield structured_logs
     else:
         # Send lines to Datadog
         for line in data.splitlines():
@@ -372,6 +386,7 @@ def parse_event_source(event, key):
         "vpc",
         "rds",
         "sns",
+        "auth0",
     ]:
         if source in key:
             return source
@@ -384,4 +399,6 @@ def parse_event_source(event, key):
     if "Records" in event and len(event["Records"]) > 0:
         if "s3" in event["Records"][0]:
             return "s3"
+    if "auth0_batch" in key:
+        return "auth0"
     return "aws"
